@@ -1,0 +1,58 @@
+var
+
+
+
+// filtering our data, adding dot applies tool, pulling all landsat tiles that itersect with the point that i dropped
+//how to filter your landsat tiles to a specfic range of dates
+//filter cloud cover out of your landsat tiles: 10 represents the macimum cloud cover accepted
+// always investigate if you can get a cloud free tile and if you cant get a cloud/cloud shadows free tile then you need to cloud mask
+// cloud masking combines two seperate tiles from different seasons with different cloud cover to make one tile with no cloud cover
+
+var lscoll =ls8.filterBounds(geometry)
+            .filterDate('2023-06-15','2023-10-01')
+            .filter(ee.Filter.lt('CLOUD_COVER', 10))
+            
+print(lscoll)
+
+// to see whats going on in the first image of an image collection
+
+var lsFirst =lscoll.first();
+
+print(lsFirst);
+
+//Cloudy pixel masking, making a function!
+// image = dummy variable that you are applying the function to
+//{} contain the function you are making
+// .map applies a function to an image collection for each image within the collection
+
+var maskClouds = function(image) {
+  var scored= ee.Algorithms.Landsat.simpleCloudScore(image);
+  return image.updateMask(scored.select(['cloud']).lt(20))
+};
+
+//applying the command
+// calculating the median pixel value from the masked layer
+var lsMask = lscoll.map(maskClouds)
+var lscomp=lsMask.median()
+
+// how to make a layer for a map!!!
+// map.addlayer is the command for adding layers and features to the map
+//you cannot add image collections to the map only images
+// {bands:['B4', 'B3', 'B2'], max:0.4, gamma: 1.6} this is image viosualization parameters
+// "" this is the title, true is if you want to add it right to the map, false strores the layer but doesnt put it right on the map
+Map.addLayer(lscomp, {bands:['B4', 'B3', 'B2'], max:0.2284, gamma: 1.6}, "Landsat 8 Composite 2023",true)
+
+//to look at layer visualization hover over layers and press the gear button
+//stretch 100 makes clear visualization
+// if you press import on the layer symbology tab, it creates visualization as a new variable, and you can replace everything in the visualization parameters tab to the variable you created
+
+
+//Methods to center your map
+Map.centerObject(geometry, 10)
+Map.setCenter(-105.00646788157077,38.778393574695734)
+
+//how to title your map
+var title=ui.Label({value:"Cloud Free Imagery",
+style:{fontWeight: 'bold', fontSize:'24px'}})
+
+Map.add(title)
